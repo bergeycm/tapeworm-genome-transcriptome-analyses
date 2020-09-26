@@ -38,6 +38,7 @@ print (IDS_WGS)
 
 rule all:
     input:
+        # --- Preparing and QCing reads
         # symlink_to_reads:
         expand("data/WGS/{ind}.{read}.fastq.gz", ind=IDS_WGS, read=['R1','R2']),
         # download_ref_genomes:
@@ -51,6 +52,7 @@ rule all:
         expand("data/WGS/{ind}_TRIM.{read}.rmdup.fastq.gz", ind=IDS_WGS, read=['R1','R2']),
         # estimate_kmer:
         expand("results/kmer_estimation/{ind}.bestkmer.txt", ind=IDS_WGS),
+        # --- Mitochondrial DNA steps
         # assemble_mt_dna:
         expand("results/MITObim_{ind}/MITObim_log_{ind}.txt", ind=IDS_WGS),
         expand("results/MITObim_{ind}/MITObim_mt_{ind}-mt-final_noIUPAC.fasta", ind=IDS_WGS),
@@ -71,6 +73,7 @@ rule all:
                     "best_model.nex", "treefile", "iqtree", "log"]),
         expand("results/phylogeny/mt_phylogeny/mt_genes_concord.{ending}",
             ending=["cf.tree", "cf.tree.nex", "cf.branch", "cf.stat", "log"]),
+        # --- Download annotations and proteome
         # download_annotations:
         "genomes/annotations/taenia_solium.PRJNA170813.WBPS9.annotations.gff3",
         "genomes/annotations/taenia_solium.PRJNA170813.WBPS9.annotations.gff3.gz",
@@ -84,6 +87,7 @@ rule all:
         # split_proteome:
         expand("genomes/{proteome}.protein.oneline.fa-split_marker",
             proteome=PROTEOMES),
+        # --- Run aTRAM
         # build_atram_libs:
         expand("results/atram/atram_libraries/{ind}.sqlite.db", ind=IDS_WGS),
         # run_atram_echinococcus:
@@ -94,6 +98,7 @@ rule all:
         # do_exon_stitching_echinococcus:
         "exon_stitching_echinococcus/final/summary_stats.per.gene.csv",
         "exon_stitching_echinococcus/final/summary_stats.per.taxon.csv",
+        # --- Align genes, infer Bayesian gene tree, concat
         # make_gene_trees_cmd_lists:
         "results/phylogeny/gene_tree_commands/gene_tree_cmds.sh",
         expand("results/phylogeny/gene_tree_commands/gene_tree_cmds_part{gene_tree_part}",
@@ -104,6 +109,7 @@ rule all:
         # concat_loci:
         "results/phylogeny/concat/combined.phy",
         "results/phylogeny/concat/combined.nex",
+        # --- Infer whole genome phylogeny
         # infer_species_tree:
         "results/phylogeny/concat/trees/RAxML_bipartitions.concat_atram_boot.sp.tre",
         # infer_species_tree_iqtree:
@@ -115,6 +121,7 @@ rule all:
             ending=["cf.tree", "cf.tree.nex", "cf.branch", "cf.stat"]),
         # infer_species_tree_mb:
         "results/phylogeny/concat/combined.mb.nex.t",
+        # --- Infer ML gene tree and compute branch length stats
         # make_ML_gene_trees_cmd_lists:
         expand("results/phylogeny/gene_tree_commands/gene_tree_ML_cmds_part{gene_tree_part}.cmd_list",
             gene_tree_part=GENE_TREE_PARTS),
@@ -123,6 +130,7 @@ rule all:
             gene_tree_part=GENE_TREE_PARTS),
         # compute_brlen_ratios:
         "results/gene_tree_distance_ratios_human_nonhuman.txt",
+        # --- Do various overrep/enrichment tests
         # do_go_overrep_brlen:
         "results/gene_tree_distance_ratios_human_nonhuman.tbl.txt",
         # overrep_test_drug_targets:
@@ -141,13 +149,14 @@ rule all:
         "results/human_slowed_heat_DE.highestheated.brlen_perc0.01.chisq.txt",
         "results/human_slowed_heat_DE.highestheated.brlen_perc0.01.hypergeometric.txt",
         "results/human_slowed_heat_DE.highestheated.brlen_perc0.01.wilcox.txt",
+        # --- Compute miscellaneous stats
         # count_reads:
         "reports/ind_read_count.txt",
 
 localrules: all
 
 # ========================================================================================
-# --- Assemble genomes
+# --- Preparing and QCing reads
 # ========================================================================================
 
 # ----------------------------------------------------------------------------------------
@@ -223,6 +232,10 @@ rule estimate_kmer:
             mem=",mem=5gb"
     shell:
         "sh scripts/estimate_kmer.sh {wildcards.ind}"
+
+# ========================================================================================
+# --- Mitochondrial DNA steps
+# ========================================================================================
 
 # ----------------------------------------------------------------------------------------
 # --- Assemble mtDNA
@@ -316,6 +329,10 @@ rule infer_mt_tree:
 
        
 
+# ========================================================================================
+# --- Download annotations and proteome
+# ========================================================================================
+
 # ----------------------------------------------------------------------------------------
 # --- Download annotations
 # ----------------------------------------------------------------------------------------
@@ -361,6 +378,10 @@ rule split_proteome:
             mem=",mem=5gb"
     shell:
         "sh scripts/split_proteomes.sh {input}"
+
+# ========================================================================================
+# --- Run aTRAM
+# ========================================================================================
 
 # ----------------------------------------------------------------------------------------
 # --- Build aTRAM libraries
@@ -427,6 +448,10 @@ rule do_exon_stitching_echinococcus:
     shell:
         "sh scripts/do_exon_stitching.sh echinococcus {input.prot_fasta}"
 
+# ========================================================================================
+# --- Align genes, infer Bayesian gene tree, concat
+# ========================================================================================
+
 # ----------------------------------------------------------------------------------------
 # --- Make lists of commands for alignment and Bayesian gene tree inference in parallel
 # ----------------------------------------------------------------------------------------
@@ -481,6 +506,10 @@ rule concat_loci:
             mem=",mem=5gb"
     shell:
         "sh scripts/concatenate_loci.sh"
+
+# ========================================================================================
+# --- Infer whole genome phylogeny
+# ========================================================================================
 
 # ----------------------------------------------------------------------------------------
 # --- Infer species tree with RAxML
@@ -539,6 +568,10 @@ rule infer_species_tree_mb:
 
        
 
+# ========================================================================================
+# --- Infer ML gene tree and compute branch length stats
+# ========================================================================================
+
 # ----------------------------------------------------------------------------------------
 # --- Make lists of commands for ML gene tree inference in parallel
 # ----------------------------------------------------------------------------------------
@@ -589,6 +622,10 @@ rule compute_brlen_ratios:
             mem=",mem=5gb"
     shell:
         "sh scripts/compute_all_brlen_ratios.sh"
+
+# ========================================================================================
+# --- Do various overrep/enrichment tests
+# ========================================================================================
 
 # ----------------------------------------------------------------------------------------
 # --- Do GO overrep tests for accelerated (or decelerated) ev genes
@@ -652,6 +689,10 @@ rule overrep_test_heat:
             mem=",mem=5gb"
     shell:
         "Rscript scripts/overrep_test_accelerated_heat.R"
+
+# ========================================================================================
+# --- Compute miscellaneous stats
+# ========================================================================================
 
 # ----------------------------------------------------------------------------------------
 # --- Count up reads
