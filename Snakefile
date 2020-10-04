@@ -73,6 +73,8 @@ rule all:
                     "best_model.nex", "treefile", "iqtree", "log"]),
         expand("results/phylogeny/mt_phylogeny/mt_genes_concord.{ending}",
             ending=["cf.tree", "cf.tree.nex", "cf.branch", "cf.stat", "log"]),
+        # plot_mt_tree:
+        "reports/mt_tree.pdf",
         # --- Download annotations and proteome
         # download_annotations:
         "genomes/annotations/taenia_solium.PRJNA170813.WBPS9.annotations.gff3",
@@ -121,6 +123,8 @@ rule all:
             ending=["cf.tree", "cf.tree.nex", "cf.branch", "cf.stat"]),
         # infer_species_tree_mb:
         "results/phylogeny/concat/combined.mb.nex.t",
+        # plot_wgs_tree:
+        "reports/WGS_tree.pdf",
         # --- Infer ML gene tree and compute branch length stats
         # make_ML_gene_trees_cmd_lists:
         expand("results/phylogeny/gene_tree_commands/gene_tree_ML_cmds_part{gene_tree_part}.cmd_list",
@@ -248,7 +252,7 @@ rule assemble_mt_dna:
         "results/MITObim_{ind}/MITObim_log_{ind}.txt",
         "results/MITObim_{ind}/MITObim_mt_{ind}-mt-final_noIUPAC.fasta"
     threads: 8
-    params: runtime="24",
+    params: runtime="48",
             mem=",mem=96gb"
     shell:
         "sh scripts/assemble_mt_genomes.sh {wildcards.ind}"
@@ -327,7 +331,16 @@ rule infer_mt_tree:
 # --- Make mt phylogeny figure
 # ----------------------------------------------------------------------------------------
 
-       
+rule plot_mt_tree:
+    input:
+        "results/phylogeny/mt_phylogeny/mt_genes_concat.contree"
+    output:
+        "reports/mt_tree.pdf"
+    threads: 1
+    params: runtime="1",
+            mem=",mem=5gb"
+    shell:
+        "Rscript scripts/plot_mt_tree.R"
 
 # ========================================================================================
 # --- Download annotations and proteome
@@ -566,7 +579,16 @@ rule infer_species_tree_mb:
 # --- Make WGS phylogeny figure
 # ----------------------------------------------------------------------------------------
 
-       
+rule plot_wgs_tree:
+    input:
+        "results/phylogeny/concat/wgs_iq_tree/wgs_concord.cf.tree"
+    output:
+        "reports/WGS_tree.pdf"
+    threads: 1
+    params: runtime="96",
+            mem=",mem=48gb"
+    shell:
+        "Rscript scripts/plot_WGS_tree.R"
 
 # ========================================================================================
 # --- Infer ML gene tree and compute branch length stats
